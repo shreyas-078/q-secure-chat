@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Q Secure</title>
+    <title>Q-Secure Chat - Login</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/login.css') }}"
@@ -13,31 +13,31 @@
       href="{{ url_for('static', filename='images/favicon.png') }}"
       type="image/x-icon"
     />
+    <script src="{{ url_for('static', filename = 'js/login.js') }}"></script>
   </head>
   <body>
     <header>
-      <img
-        src="{{ url_for('static', filename='images/light.png') }}"
-        alt="Q Secure Chat Logo"
-        class="header-img"
-      />
-      <h1>Q-Seucre Chat</h1>
+      <h1>Q-Secure Chat</h1>
     </header>
-    <section class="login-box">
-      <h2 class="login-heading">Login</h2>
-      <hr class="rule" />
-      <div class="cred-container">
-        <label for="username" class="label-login">Username:</label>
-        <input type="text" id="username" class="ip-login" />
-      </div>
-      <div class="cred-container">
-        <label for="password" class="label-login">Password:</label>
-        <input type="password" id="password" class="ip-login" />
-      </div>
-      <button class="login-button">Login</button>
-      <p class="helper-text">Invalid Credentials.</p>
-      <a href="/register" class="sign-up">Sign Up</a>
-    </section>
-    <button id="theme-button">Change Theme</button>
+    <main>
+      <section>
+        <h2>Login</h2>
+        <form action="/signin" method="post" id="loginForm">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required />
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required />
+          <button type="submit">Login</button>
+        </form>
+        <p id="error-message" style="color: red; display: none">
+          Incorrect username or password. Please try again.
+        </p>
+        <p>Don't have an account? <a href="/register">Register here</a>.</p>
+        <p><a href="/forgot_password_page">Forgot Password?</a></p>
+      </section>
+    </main>
+    <footer>
+      <p>&copy; 2023 Q-Secure Chat. All rights reserved.</p>
+    </footer>
   </body>
 </html>
