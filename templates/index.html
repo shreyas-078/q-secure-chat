@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>User's Chats!</title>
+    <title>{{ username }}'s Chats</title>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css"
@@ -27,149 +27,94 @@
               alt="Profile img"
             />
             <span class="settings-tray--right">
-              <i class="material-icons">cached</i>
-              <i class="material-icons">message</i>
+              <i class="material-icons" id="search-icon">message</i>
               <i class="material-icons">menu</i>
             </span>
           </div>
-          <div class="search-box">
-            <div class="input-wrapper">
-              <i class="material-icons">search</i>
-              <input placeholder="Search here" type="text" />
-            </div>
-          </div>
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
+
+          <!-- Search Panel -->
+          <div id="search-panel" class="d-none">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search users..."
             />
-            <div class="text">
-              <h6>User 1</h6>
-              <p class="text-muted">Hey!</p>
-            </div>
-            <span class="time text-muted small">13:21</span>
+            <ul id="search-results" class="list-unstyled"></ul>
           </div>
-          <hr />
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
-            />
-            <div class="text">
-              <h6>User 2</h6>
-              <p class="text-muted">Hi</p>
-            </div>
-            <span class="time text-muted small">00:32</span>
-          </div>
-          <hr />
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
-            />
-            <div class="text">
-              <h6>User 3</h6>
-              <p class="text-muted">Hi</p>
-            </div>
-            <span class="time text-muted small">13:21</span>
-          </div>
-          <hr />
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
-            />
-            <div class="text">
-              <h6>User 4</h6>
-              <p class="text-muted">Im studying</p>
-            </div>
-            <span class="time text-muted small">13:21</span>
-          </div>
-          <hr />
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
-            />
-            <div class="text">
-              <h6>User 5</h6>
-              <p class="text-muted">Ok</p>
-            </div>
-            <span class="time text-muted small">13:21</span>
-          </div>
-          <hr />
-          <div class="friend-drawer friend-drawer--onhover">
-            <img
-              class="profile-image"
-              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-              alt=""
-            />
-            <div class="text">
-              <h6>User 6</h6>
-              <p class="text-muted">Hi</p>
-            </div>
-            <span class="time text-muted small">13:21</span>
-          </div>
-        </div>
-        <div class="col-md-8">
-          <div class="settings-tray">
-            <div class="friend-drawer no-gutters friend-drawer--grey">
+
+          <!-- User Chats Panel -->
+          <div id="user-chats">
+            <!-- User chats will be dynamically injected here -->
+            {% if has_messages %} {% for chat_partner_id, messages in
+            messages.items() %}
+            <div
+              class="friend-drawer friend-drawer--onhover"
+              data-chat-partner-id="{{ chat_partner_id }}"
+            >
               <img
                 class="profile-image"
                 src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
-                alt=""
+                alt="Profile img"
               />
               <div class="text">
-                <h6>User 1</h6>
-                <p class="text-muted">Online</p>
+                <h6>User {{ chat_partner_id }}</h6>
+                <p class="text-muted">
+                  {{ messages[-1].content if messages else "No messages" }}
+                </p>
               </div>
-              <span class="settings-tray--right">
-                <i class="material-icons">cached</i>
-                <i class="material-icons">message</i>
-                <i class="material-icons">menu</i>
-              </span>
+              <span class="time text-muted small"
+                >{{ messages[-1].timestamp if messages else "No messages"
+                }}</span
+              >
             </div>
+            <hr />
+            {% endfor %} {% else %}
+            <div class="friend-drawer">
+              <p>No conversations yet</p>
+            </div>
+            {% endif %}
           </div>
-          <div class="chat-panel">
+        </div>
+
+        <div class="col-md-8">
+          <div class="settings-tray">
+            <img
+              class="profile-image"
+              src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
+              alt="Profile img"
+            />
+            <span class="settings-tray--right">
+              <i class="material-icons" id="hamburger-icon">menu</i>
+            </span>
+          </div>
+
+          <!-- Hamburger Menu -->
+          <div id="hamburger-menu" class="hamburger-menu d-none">
+            <ul>
+              <li>
+                <a href="{{ url_for('user', username=current_user.username) }}"
+                  >User Settings</a
+                >
+              </li>
+              <li><a href="#" id="logout-btn">Log Out</a></li>
+            </ul>
+          </div>
+
+          <!-- Chat Panel -->
+          <div class="chat-panel" id="chat-panel">
+            {% if messages[chat_partner_id] %}
             <div class="row no-gutters">
-              <div class="col-md-3">
-                <div class="chat-bubble chat-bubble--left">Hello</div>
+              {% for message in messages[chat_partner_id] %}
+              <div
+                class="col-md-3 {% if message.sender_id == current_user.id %}offset-md-9{% endif %}"
+              >
+                <div
+                  class="chat-bubble {% if message.sender_id == current_user.id %}chat-bubble--right{% else %}chat-bubble--left{% endif %}"
+                >
+                  {{ message.content }}
+                </div>
               </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3 offset-md-9">
-                <div class="chat-bubble chat-bubble--right">Hello</div>
-              </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3 offset-md-9">
-                <div class="chat-bubble chat-bubble--right">Hello</div>
-              </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3">
-                <div class="chat-bubble chat-bubble--left">Hello</div>
-              </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3">
-                <div class="chat-bubble chat-bubble--left">Hello</div>
-              </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3">
-                <div class="chat-bubble chat-bubble--left">Hello</div>
-              </div>
-            </div>
-            <div class="row no-gutters">
-              <div class="col-md-3 offset-md-9">
-                <div class="chat-bubble chat-bubble--right">Hello</div>
-              </div>
+              {% endfor %}
             </div>
             <div class="row">
               <div class="col-12">
@@ -181,9 +126,17 @@
                 </div>
               </div>
             </div>
+            {% else %}
+            <div class="chat-panel">
+              <p>No messages yet. Start a conversation!</p>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
     </div>
+
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <!-- External JS -->
   </body>
 </html>
