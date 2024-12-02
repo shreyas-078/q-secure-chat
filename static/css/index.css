@@ -24,7 +24,17 @@ body {
   border-radius: 7px;
 }
 
+.profile-tray {
+  background: #eee;
+  padding: 10px 15px;
+  border-radius: 7px;
+}
+
 .settings-tray .no-gutters {
+  padding: 0;
+}
+
+.profile-tray .no-gutters {
   padding: 0;
 }
 
@@ -45,9 +55,33 @@ body {
   cursor: pointer;
 }
 
-.search-box {
-  background: #fafafa;
+#search-input {
+  background-color: #eee;
   padding: 10px 13px;
+  color: #333;
+  width: 95%;
+  margin: 10px;
+}
+
+#search-input::placeholder {
+  color: #333;
+}
+
+#search-results {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#search-results li {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 5rem;
+  transition: all 0.3s ease-in-out;
+}
+
+#search-results li:hover {
+  background: #74b9ff;
+  color: #fff;
 }
 
 .search-box .input-wrapper {
@@ -205,7 +239,6 @@ hr {
   border: 1px solid #ddd;
   padding: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  display: none;
   width: 150px;
   z-index: 1000;
 }
@@ -224,7 +257,7 @@ hr {
   color: #333;
 }
 
-.hamburger-menu.d-none {
+.d-none {
   display: none;
 }
 

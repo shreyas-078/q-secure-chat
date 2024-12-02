@@ -12,6 +12,7 @@ from flask_login import (
     logout_user,
     current_user,
 )
+import certifi
 import uuid
 import datetime
 import jwt
@@ -19,7 +20,7 @@ from flask_mail import Mail, Message
 
 load_dotenv()
 app = Flask(__name__, static_url_path="/static", static_folder="static")
-client = MongoClient(os.getenv("MONGO_URI"))
+client = MongoClient(os.getenv("MONGO_URI"), tlsCAFile=certifi.where())
 db = client["q-secure"]
 cred_collection = db.credentials
 app.secret_key = os.getenv("SECRET_KEY")
@@ -253,8 +254,15 @@ def search_users():
     if query:
         # Search for users in the database based on the query
         users = db.credentials.find({"username": {"$regex": query, "$options": "i"}})
-        print(users)
-        results = [{"username": user["username"]} for user in users]
+        results = [
+            (
+                {"username": user["username"]}
+                if user["username"] != current_user.username
+                else None
+            )
+            for user in users
+        ]
+        results
     else:
         results = []
 
@@ -279,6 +287,17 @@ def send_message():
     db.messages.insert_one(new_message)
 
     return jsonify({"status": "success", "message": "Message sent!"})
+
+
+@app.route("/user/settings/<username>", methods=["GET"])
+def user_settings(username):
+    return render_template("settings.html", username=username)
+
+
+@app.route("/logout", methods=["GET"])
+def logout_user_custom():
+    logout_user()
+    return jsonify({"status": "success"}), 200
 
 
 if __name__ == "__main__":

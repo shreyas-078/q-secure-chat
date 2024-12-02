@@ -28,8 +28,20 @@
             />
             <span class="settings-tray--right">
               <i class="material-icons" id="search-icon">message</i>
-              <i class="material-icons">menu</i>
+              <i class="material-icons" id="hamburger-icon">menu</i>
             </span>
+            <!-- Hamburger Menu -->
+            <div id="hamburger-menu" class="hamburger-menu d-none">
+              <ul>
+                <li>
+                  <a
+                    href="{{ url_for('user/settings', username=current_user.username) }}"
+                    >User Settings</a
+                  >
+                </li>
+                <li><a href="#" id="logout-btn">Log Out</a></li>
+              </ul>
+            </div>
           </div>
 
           <!-- Search Panel -->
@@ -37,7 +49,7 @@
             <input
               type="text"
               id="search-input"
-              placeholder="Search users..."
+              placeholder="Add a new User..."
             />
             <ul id="search-results" class="list-unstyled"></ul>
           </div>
@@ -77,27 +89,12 @@
         </div>
 
         <div class="col-md-8">
-          <div class="settings-tray">
+          <div class="profile-tray">
             <img
               class="profile-image"
               src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
               alt="Profile img"
             />
-            <span class="settings-tray--right">
-              <i class="material-icons" id="hamburger-icon">menu</i>
-            </span>
-          </div>
-
-          <!-- Hamburger Menu -->
-          <div id="hamburger-menu" class="hamburger-menu d-none">
-            <ul>
-              <li>
-                <a href="{{ url_for('user', username=current_user.username) }}"
-                  >User Settings</a
-                >
-              </li>
-              <li><a href="#" id="logout-btn">Log Out</a></li>
-            </ul>
           </div>
 
           <!-- Chat Panel -->

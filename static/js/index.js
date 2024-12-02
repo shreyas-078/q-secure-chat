@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
     event.preventDefault(); // Prevent default link behavior
 
     fetch('/logout', {
-      method: 'POST',
+      method: 'GET',
     })
       .then(response => {
         if (response.ok) {
