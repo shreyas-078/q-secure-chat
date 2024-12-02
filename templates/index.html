@@ -15,6 +15,11 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/index.css') }}"
     />
+    <link
+      rel="shortcut icon"
+      href="{{ url_for('static', filename='images/favicon.png') }}"
+      type="image/x-icon"
+    />
   </head>
   <body>
     <div class="container">
@@ -26,6 +31,7 @@
               src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
               alt="Profile img"
             />
+            <h5>Your Chats</h5>
             <span class="settings-tray--right">
               <i class="material-icons" id="search-icon">message</i>
               <i class="material-icons" id="hamburger-icon">menu</i>
@@ -34,10 +40,7 @@
             <div id="hamburger-menu" class="hamburger-menu d-none">
               <ul>
                 <li>
-                  <a
-                    href="{{ url_for('user/settings', username=current_user.username) }}"
-                    >User Settings</a
-                  >
+                  <a href="/">User Settings</a>
                 </li>
                 <li><a href="#" id="logout-btn">Log Out</a></li>
               </ul>
@@ -69,38 +72,39 @@
                 alt="Profile img"
               />
               <div class="text">
-                <h6>User {{ chat_partner_id }}</h6>
+                <h6>{{ chat_partner_usernames[chat_partner_id] }}</h6>
+                <!-- Display chat partner's username -->
                 <p class="text-muted">
                   {{ messages[-1].content if messages else "No messages" }}
                 </p>
               </div>
-              <span class="time text-muted small"
-                >{{ messages[-1].timestamp if messages else "No messages"
-                }}</span
-              >
+              <span class="time text-muted small">
+                {{ messages[-1].timestamp if messages else "No messages" }}
+              </span>
             </div>
             <hr />
             {% endfor %} {% else %}
-            <div class="friend-drawer">
+            <div class="no-convos-box">
               <p>No conversations yet</p>
             </div>
             {% endif %}
           </div>
         </div>
 
-        <div class="col-md-8">
-          <div class="profile-tray">
+        <div class="col-md-8 chat-cointainer">
+          <div class="profile-tray d-none">
             <img
               class="profile-image"
               src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"
               alt="Profile img"
             />
+            <h5>Username</h5>
           </div>
 
           <!-- Chat Panel -->
           <div class="chat-panel" id="chat-panel">
             {% if messages[chat_partner_id] %}
-            <div class="row no-gutters">
+            <div class="chat-partner-chats">
               {% for message in messages[chat_partner_id] %}
               <div
                 class="col-md-3 {% if message.sender_id == current_user.id %}offset-md-9{% endif %}"
@@ -118,14 +122,15 @@
                 <div class="chat-box-tray">
                   <i class="material-icons">sentiment_very_satisfied</i>
                   <input type="text" placeholder="Type your message here..." />
-                  <i class="material-icons">mic</i>
                   <i class="material-icons">send</i>
                 </div>
               </div>
             </div>
             {% else %}
             <div class="chat-panel">
-              <p>No messages yet. Start a conversation!</p>
+              <p style="text-align: center; margin-top: 10px">
+                No messages yet. Start a conversation!
+              </p>
             </div>
             {% endif %}
           </div>
@@ -133,7 +138,13 @@
       </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
     <!-- External JS -->
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script>
+      const currentUser = {
+        id: "{{ current_user.id }}",
+        username: "{{ current_user.username }}",
+      };
+    </script>
   </body>
 </html>

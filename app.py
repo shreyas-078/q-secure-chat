@@ -1,4 +1,10 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    url_for,
+)
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -54,6 +60,16 @@ class User(UserMixin):
 def unauthorized():
     # Redirect unauthorized users to DENIED
     return render_template("access-denied.html")
+
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = (
+        "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
+    )
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.errorhandler(404)
@@ -213,6 +229,8 @@ def user(username):
 
     # Fetch messages for the current user and each distinct chat partner
     message_data = {}
+    chat_partner_usernames = {}  # Add a dictionary to store chat partner usernames
+
     for user in users_chatted:
         chat_partner_id = user["_id"]
         messages = db.messages.find(
@@ -223,6 +241,12 @@ def user(username):
                 ]
             }
         ).sort("timestamp", 1)
+
+        # Get the chat partner's username
+        chat_partner = db.credentials.find_one({"_id": ObjectId(chat_partner_id)})
+        chat_partner_usernames[chat_partner_id] = chat_partner[
+            "username"
+        ]  # Store username
 
         message_list = []
         for msg in messages:
@@ -244,6 +268,49 @@ def user(username):
         messages=message_data,
         username=username,
         has_messages=has_messages,
+        chat_partner_usernames=chat_partner_usernames,  # Pass the usernames to the template
+    )
+
+
+@app.route("/get_chat/<chat_partner_id>", methods=["GET"])
+@login_required
+def get_chat(chat_partner_id):
+    # Fetch messages between the current user and the chat partner
+    messages = db.messages.find(
+        {
+            "$or": [
+                {
+                    "sender_id": current_user.id,
+                    "receiver_id": ObjectId(chat_partner_id),
+                },
+                {
+                    "sender_id": ObjectId(chat_partner_id),
+                    "receiver_id": current_user.id,
+                },
+            ]
+        }
+    ).sort("timestamp", 1)
+
+    message_list = []
+    for msg in messages:
+        message_list.append(
+            {
+                "message_id": msg["message_id"],
+                "sender_id": str(msg["sender_id"]),
+                "receiver_id": str(msg["receiver_id"]),
+                "content": msg["content"],
+                "timestamp": msg["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+    # Retrieve the chat partner's username
+    chat_partner = db.credentials.find_one({"_id": ObjectId(chat_partner_id)})
+
+    return jsonify(
+        {
+            "status": "success",
+            "messages": message_list,
+            "username": chat_partner["username"],
+        }
     )
 
 
@@ -256,13 +323,13 @@ def search_users():
         users = db.credentials.find({"username": {"$regex": query, "$options": "i"}})
         results = [
             (
-                {"username": user["username"]}
+                {"username": user["username"], "id": str(user["_id"])}
                 if user["username"] != current_user.username
                 else None
             )
             for user in users
         ]
-        results
+        results = [user for user in results if user is not None]
     else:
         results = []
 
@@ -280,7 +347,7 @@ def send_message():
     new_message = {
         "message_id": str(uuid.uuid4()),
         "sender_id": current_user.id,
-        "receiver_id": receiver_id,
+        "receiver_id": ObjectId(receiver_id),
         "content": content,
         "timestamp": datetime.datetime.now(datetime.timezone.utc),
     }
@@ -289,7 +356,7 @@ def send_message():
     return jsonify({"status": "success", "message": "Message sent!"})
 
 
-@app.route("/user/settings/<username>", methods=["GET"])
+@app.route("/usersettings/<username>", methods=["GET"])
 def user_settings(username):
     return render_template("settings.html", username=username)
 

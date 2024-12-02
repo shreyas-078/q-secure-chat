@@ -12,6 +12,10 @@ body {
   border-radius: 7px;
 }
 
+#new-message {
+  padding-left: 10px;
+}
+
 .profile-image {
   width: 50px;
   height: 50px;
@@ -22,12 +26,20 @@ body {
   background: #eee;
   padding: 10px 15px;
   border-radius: 7px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .profile-tray {
   background: #eee;
   padding: 10px 15px;
   border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .settings-tray .no-gutters {
@@ -139,6 +151,7 @@ input:focus {
 
 .friend-drawer .time {
   color: grey;
+  text-align: center;
 }
 
 .friend-drawer--onhover:hover {
@@ -263,4 +276,34 @@ hr {
 
 .settings-tray--right {
   cursor: pointer;
+}
+
+.no-convos-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin: 50%;
+}
+
+#send-message {
+  background: #74b9ff;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+#send-message:hover {
+  background: #0984e3;
+}
+
+#emoji {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+#emoji:hover {
+  color: #74b9ff;
 }
