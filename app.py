@@ -18,6 +18,8 @@ from flask_login import (
     logout_user,
     current_user,
 )
+from flask_cors import CORS
+from flask_socketio import SocketIO, join_room, leave_room, emit
 import certifi
 import uuid
 import datetime
@@ -28,8 +30,11 @@ load_dotenv()
 app = Flask(__name__, static_url_path="/static", static_folder="static")
 client = MongoClient(os.getenv("MONGO_URI"), tlsCAFile=certifi.where())
 db = client["q-secure"]
-cred_collection = db.credentials
+cred_collection = db.credentials  # Collection for storing user credentials
 app.secret_key = os.getenv("SECRET_KEY")
+
+# CORS for Sockets
+CORS(app, origins=["http://127.0.0.1:3000", "http://localhost:3000"])
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -40,10 +45,14 @@ login_manager.login_view = "login_page"
 app.config["MAIL_SERVER"] = "smtp.example.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = ""  # Add this later
-app.config["MAIL_PASSWORD"] = ""  # Add this later
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 
 mail = Mail(app)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+)
 
 
 class User(UserMixin):
@@ -318,42 +327,32 @@ def get_chat(chat_partner_id):
 @login_required
 def search_users():
     query = request.args.get("query")  # Get the search query
+    exclude_users = request.args.get(
+        "exclude_users", ""
+    )  # Get the list of users to exclude
+    exclude_user_ids = exclude_users.split(",") if exclude_users else []
+    exclude_user_ids = [ObjectId(user_id) for user_id in exclude_user_ids]
+
     if query:
         # Search for users in the database based on the query
-        users = db.credentials.find({"username": {"$regex": query, "$options": "i"}})
+        users = db.credentials.find(
+            {
+                "username": {"$regex": query, "$options": "i"},
+                "_id": {
+                    "$nin": exclude_user_ids
+                },  # Exclude users already in conversations
+            }
+        )
+
         results = [
-            (
-                {"username": user["username"], "id": str(user["_id"])}
-                if user["username"] != current_user.username
-                else None
-            )
+            {"username": user["username"], "id": str(user["_id"])}
             for user in users
+            if user["username"] != current_user.username
         ]
-        results = [user for user in results if user is not None]
     else:
         results = []
 
     return jsonify(results)
-
-
-@app.route("/send_message", methods=["POST"])
-@login_required
-def send_message():
-    data = request.get_json()
-    content = data.get("content")
-    receiver_id = data.get("receiver_id")
-
-    # Save the message in MongoDB
-    new_message = {
-        "message_id": str(uuid.uuid4()),
-        "sender_id": current_user.id,
-        "receiver_id": ObjectId(receiver_id),
-        "content": content,
-        "timestamp": datetime.datetime.now(datetime.timezone.utc),
-    }
-    db.messages.insert_one(new_message)
-
-    return jsonify({"status": "success", "message": "Message sent!"})
 
 
 @app.route("/usersettings/<username>", methods=["GET"])
@@ -367,5 +366,85 @@ def logout_user_custom():
     return jsonify({"status": "success"}), 200
 
 
+@socketio.on("join_chat")
+def on_join_chat(data):
+    # Data contains the IDs of both users involved in the chat
+    current_user_id = str(current_user.id)
+    chat_partner_id = data["chat_partner_id"]
+
+    # Create a unique room name based on user IDs
+    room_name = f"chat_{min(current_user_id, chat_partner_id)}_{max(current_user_id, chat_partner_id)}"
+
+    # Leave all existing rooms and join the new room
+    leave_room(current_user_id)  # Ensure the user leaves their unique personal room
+    join_room(room_name)
+    print(f"User {current_user_id} joined room {room_name}")
+
+    emit("joined_room", {"room": room_name}, room=current_user_id)
+
+
+@socketio.on("send_message")
+def handle_send_message(data):
+    # Extract data
+    receiver_id = data["receiver_id"]
+    content = data["content"]
+
+    # Create a unique room name for the chat
+    current_user_id = str(current_user.id)
+    room_name = (
+        f"chat_{min(current_user_id, receiver_id)}_{max(current_user_id, receiver_id)}"
+    )
+
+    # Save the message in the database
+    new_message = {
+        "message_id": str(uuid.uuid4()),
+        "sender_id": current_user.id,
+        "receiver_id": ObjectId(receiver_id),
+        "content": content,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc),
+    }
+    db.messages.insert_one(new_message)
+
+    message_data = {
+        "message_id": new_message["message_id"],
+        "sender_id": str(current_user.id),  # Convert sender_id to string
+        "receiver_id": str(receiver_id),  # Convert receiver_id to string
+        "content": content,
+        "timestamp": new_message["timestamp"].isoformat(),
+    }
+    emit("new_message", message_data, room=room_name)
+
+
+@app.route("/delete_chat/<username>", methods=["POST"])
+@login_required
+def delete_chat(username):
+    # Find the user by username
+    user = db.credentials.find_one({"username": username})
+
+    # If the user exists and the current user is allowed to delete the chat
+    if user:
+        chat_partner_id = str(user["_id"])
+
+        # Delete all messages between the current user and the chat partner
+        db.messages.delete_many(
+            {
+                "$or": [
+                    {
+                        "sender_id": current_user.id,
+                        "receiver_id": ObjectId(chat_partner_id),
+                    },
+                    {
+                        "sender_id": ObjectId(chat_partner_id),
+                        "receiver_id": current_user.id,
+                    },
+                ]
+            }
+        )
+
+        return jsonify({"status": "success", "message": "Chat deleted successfully."})
+
+    return jsonify({"status": "error", "message": "User not found."})
+
+
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    socketio.run(app, port=3000, debug=True)

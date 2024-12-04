@@ -22,6 +22,11 @@ body {
   border-radius: 40px;
 }
 
+.chat-partner-chats {
+  height: 50vh;
+  overflow-y: auto;
+}
+
 .settings-tray {
   background: #eee;
   padding: 10px 15px;
@@ -40,6 +45,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
 }
 
 .settings-tray .no-gutters {
@@ -147,6 +153,12 @@ input:focus {
 
 .friend-drawer .text p {
   margin: 0;
+  width: calc(100% - 4rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
 }
 
 .friend-drawer .time {
@@ -177,6 +189,8 @@ hr {
   border-radius: 9px;
   position: relative;
   animation: fadeIn 1s ease-in;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .chat-bubble:after {
@@ -284,6 +298,44 @@ hr {
   align-items: center;
   text-align: center;
   margin: 50%;
+}
+
+#chat-related-info {
+  color: grey;
+  font-size: 25px;
+  transition: all 0.3s ease-in-out;
+}
+
+#chat-related-info:hover {
+  color: #74b9ff;
+  cursor: pointer;
+}
+
+#chat-related-options-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: 150px;
+  z-index: 10;
+}
+
+#chat-related-options-menu ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+#chat-related-options-menu li {
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+#chat-related-options-menu li:hover {
+  background-color: #f4f4f4;
 }
 
 #send-message {

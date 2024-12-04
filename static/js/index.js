@@ -8,10 +8,198 @@ document.addEventListener('DOMContentLoaded', function () {
   const hamburgerMenu = document.getElementById('hamburger-menu');
   const logoutBtn = document.getElementById('logout-btn');
   const chatPanel = document.getElementById('chat-panel');
+  const chatRelatedInfo = document.getElementById('chat-related-info');
+  const chatOptionsMenu = document.getElementById('chat-related-options-menu');
+  const deleteChatOption = document.getElementById('delete-chat');
+  const encryptionTechniqueOption = document.getElementById('encryption-technique');
+  const socket = io.connect('http://127.0.0.1:3000/'); // Connect to the server
+
+  // Toggle the chat options menu when clicking the chat-related-info icon
+  chatRelatedInfo.addEventListener('click', function () {
+    chatOptionsMenu.classList.toggle('d-none');
+  });
+
+  // Handle searching users
+  searchInput.addEventListener('input', function () {
+    const query = searchInput.value.trim();
+    if (query) {
+      // Make an AJAX request to the /search_users route
+      fetch(`/search_users?query=${query}`)
+        .then(response => response.json())
+        .then(data => {
+          // Clear previous results
+          searchResults.innerHTML = '';
+          console.log(data);
+
+          if (data.length > 0) {
+            // Display search results
+            data.forEach(user => {
+              const li = document.createElement('li');
+              li.textContent = user.username;
+              li.addEventListener('click', function () {
+                addChatUser(user);
+                searchPanel.classList.add('d-none');  // Hide the search panel
+                searchInput.value = '';  // Clear the search input
+              });
+              searchResults.appendChild(li);
+            });
+          } else {
+            searchResults.innerHTML = '<li>No users found</li>';
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching search results:', error);
+        });
+    } else {
+      // Clear search results if query is empty
+      searchResults.innerHTML = '';
+    }
+  });
+
+  // Function to format the timestamp as "YYYY-MM-DD HH:mm:ss"
+  function formatTimestamp() {
+    const now = new Date();
+
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0'); // Add leading zero for single digit months
+    const day = String(now.getUTCDate()).padStart(2, '0'); // Add leading zero for single digit days
+    const hours = String(now.getUTCHours()).padStart(2, '0'); // Add leading zero for single digit hours
+    const minutes = String(now.getUTCMinutes()).padStart(2, '0'); // Add leading zero for single digit minutes
+    const seconds = String(now.getUTCSeconds()).padStart(2, '0'); // Add leading zero for single digit seconds
+
+    // Return the formatted string
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  // Close the menu if the user clicks outside the menu
+  document.addEventListener('click', function (event) {
+    if (!chatRelatedInfo.contains(event.target) && !chatOptionsMenu.contains(event.target)) {
+      chatOptionsMenu.classList.add('d-none');
+    }
+  });
+
+  deleteChatOption.addEventListener('click', function () {
+    const confirmation = confirm('Are you sure you want to delete this chat? (It will be deleted for both the users)');
+    if (confirmation) {
+      const username = document.querySelector('.profile-tray h5').textContent;
+      fetch(`/delete_chat/${username}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            // Notify the other user via WebSocket about the chat deletion
+            const chatPartnerId = document.querySelector('.profile-tray').getAttribute('data-chat-partner-id');
+            socket.emit('chat_deleted', { chatPartnerId });
+
+            alert('Chat deleted successfully');
+            window.location.reload(); // Reload the page to reflect the changes
+          } else {
+            alert('Error: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error during chat deletion:', error);
+          alert('There was an error while deleting the chat.');
+        });
+    }
+  });
+
+  socket.on('chat_deleted', function (data) {
+    const chatPartnerId = data.chatPartnerId;
+    const chatDiv = document.querySelector(`.friend-drawer[data-chat-partner-id="${chatPartnerId}"]`);
+    if (chatDiv) {
+      chatDiv.remove(); // Remove the deleted chat from the UI
+    }
+  });
+
+  // Handle the encryption technique option
+  encryptionTechniqueOption.addEventListener('click', function () {
+    alert('Encryption technique: Lattice-based encryption');
+  });
+
+  socket.on('new_message', function (data) {
+    const { message_id, sender_id, content } = data;
+
+    if (document.querySelector('.chat-panel p')) {
+      document.querySelector('.chat-panel p').remove(); // Remove the placeholder message
+      const chatPartnerChats = document.createElement('div');
+      chatPartnerChats.classList.add('chat-partner-chats');
+      document.getElementById('chat-panel').insertBefore(chatPartnerChats, document.querySelector('.chat-box-tray').parentElement.parentElement);
+    }
+
+    // Get the current chat partner's username
+    const chatPartnerUsername = document.querySelector('.profile-tray h5').textContent;
+    const currentUserId = currentUser.id;
+
+    // Find the user ID of the chat partner from the friend list
+    const chatPartner = Array.from(document.querySelectorAll('.friend-drawer'))
+      .find(friendDrawer => {
+        const username = friendDrawer.querySelector('.text h6').textContent;
+        return username === chatPartnerUsername;
+      });
+
+    if (chatPartner) {
+      // get their user ID
+      const chatPartnerId = chatPartner.getAttribute('data-chat-partner-id');
+
+      // Update the latest message and timestamp in the conversation list
+      const chatPartnerTextDiv = chatPartner.querySelector('.text');
+      const p = chatPartnerTextDiv.querySelector('p');
+      const time = chatPartner.querySelector('.time');
+
+      p.textContent = content;  // Latest message content
+      time.textContent = formatTimestamp();  // Update timestamp with the formatted value
+
+      // Optionally highlight the conversation to indicate new unread messages
+      chatPartner.classList.add('new-message');  // This class can be used to style the conversation as having a new message
+    } else {
+      console.log('Chat partner not found in the conversation list');
+    }
+
+    const chatPartnerId = chatPartner.getAttribute('data-chat-partner-id');
+
+    // If the message is for the current room, update the UI inside the chat panel
+    const roomName = `chat_${Math.min(currentUserId, chatPartnerId)}_${Math.max(currentUserId, chatPartnerId)}`;
+    if (roomName === `chat_${Math.min(currentUserId, chatPartnerId)}_${Math.max(currentUserId, chatPartnerId)}`) {
+      const messageBubbleContainerParent = document.createElement('div');
+      const messageBubbleContainer = document.createElement('div');
+      const messageBubble = document.createElement('div');
+      messageBubbleContainer.appendChild(messageBubble);
+      messageBubbleContainerParent.appendChild(messageBubbleContainer);
+
+      messageBubbleContainerParent.classList.add('row', 'no-gutters');
+      if (sender_id === currentUser.id) {
+        messageBubble.classList.add('chat-bubble', 'chat-bubble--right');
+        messageBubbleContainer.classList.add('col-md-3', 'offset-md-9');
+      } else {
+        messageBubble.classList.add('chat-bubble', 'chat-bubble--left');
+        messageBubbleContainer.classList.add('col-md-3');
+      }
+
+      messageBubble.textContent = content;
+      document.querySelector('.chat-partner-chats').appendChild(messageBubbleContainerParent);
+
+      // Scroll to the bottom of the chat panel
+      if (document.querySelector('.chat-partner-chats')) {
+        document.querySelector('.chat-partner-chats').scrollTo(0, document.querySelector('.chat-partner-chats').scrollHeight);
+      }
+    }
+  });
 
   // Toggle the visibility of the hamburger menu when clicking the hamburger icon
   hamburgerIcon.addEventListener('click', function () {
     hamburgerMenu.classList.toggle('d-none');
+  });
+
+  // Close the hamburget menu if the user clicks outside the menu
+  document.addEventListener('click', function (event) {
+    if (!hamburgerIcon.contains(event.target) && !hamburgerMenu.contains(event.target)) {
+      hamburgerMenu.classList.add('d-none');
+    }
   });
 
   // Log out the user when the logout button is clicked
@@ -55,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (data.status === 'success') {
           // Update the chat header with the selected user's username
           document.querySelector('.profile-tray').classList.remove('d-none');
-          const chatPartnerUsername = data.username; // Assuming the API returns the chat partner's username
+          const chatPartnerUsername = data.username;
           document.querySelector('.profile-tray h5').textContent = chatPartnerUsername;
 
           // Clear current chat panel
@@ -87,12 +275,15 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             chatPanel.appendChild(chatContent);
+            chatContent.scrollTo(0, chatContent.scrollHeight); // Scroll to the bottom of the chat panel
           } else {
             chatPanel.innerHTML = '<p>No messages yet. Start a conversation!</p>';
           }
 
           // Add input field for new messages
           addChatBox(chatPanel, chatPartnerId);
+          // After the chat loads, join the corresponding room
+          socket.emit('join_chat', { chat_partner_id: chatPartnerId });
         } else {
           alert('Failed to load chat. Please try again.');
         }
@@ -103,96 +294,62 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   }
 
+  function sendMessage(chatPartnerId, content) {
+    socket.emit('send_message', {
+      receiver_id: chatPartnerId,
+      content: content,
+    });
+  }
+
   function addChatBox(chatPanel, chatPartnerId) {
     const chatBoxTray = document.createElement('div');
     chatBoxTray.classList.add('row');
     chatBoxTray.innerHTML = `
-      <div class="col-12">
-        <div class="chat-box-tray">
-          <i class="material-icons" id="emoji">sentiment_very_satisfied</i>
-          <input type="text" id="new-message" placeholder="Type your message here..." />
-          <i class="material-icons" id="send-message">send</i>
-        </div>
+    <div class="col-12">
+      <div class="chat-box-tray">
+        <i class="material-icons" id="emoji">sentiment_very_satisfied</i>
+        <input type="text" id="new-message" placeholder="Type your message here..." />
+        <i class="material-icons" id="send-message">send</i>
       </div>
-    `;
+    </div>
+  `;
 
     chatPanel.appendChild(chatBoxTray);
 
-    // Attach event listener to send button
+    // Get references to the input and send button
+    const inputField = chatBoxTray.querySelector('#new-message');
     const sendMessageButton = chatBoxTray.querySelector('#send-message');
+
+    // Attach event listener to send button
     sendMessageButton.addEventListener('click', function () {
-      const messageContent = document.getElementById('new-message').value.trim();
+      const messageContent = inputField.value.trim();
       if (messageContent) {
         sendMessage(chatPartnerId, messageContent);
+        inputField.value = ''; // Clear the input after sending
+      }
+    });
+
+    // Attach event listener to the input field to send message on Enter key press
+    inputField.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const messageContent = inputField.value.trim();
+        if (messageContent) {
+          sendMessage(chatPartnerId, messageContent);
+          inputField.value = ''; // Clear the input after sending
+        }
       }
     });
   }
-
-  function sendMessage(receiverId, content) {
-    fetch('/send_message', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ receiver_id: receiverId, content }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Optionally refresh chat
-          loadChat(receiverId);
-        } else {
-          alert('Failed to send message. Please try again.');
-        }
-      })
-      .catch(error => {
-        console.error('Error sending message:', error);
-        alert('Error sending message. Please try again.');
-      });
-  }
-
-  // Handle searching users
-  searchInput.addEventListener('input', function () {
-    const query = searchInput.value.trim();
-    if (query) {
-      // Make an AJAX request to the /search_users route
-      fetch(`/search_users?query=${query}`)
-        .then(response => response.json())
-        .then(data => {
-          // Clear previous results
-          searchResults.innerHTML = '';
-          console.log(data);
-
-          if (data.length > 0) {
-            // Display search results
-            data.forEach(user => {
-              const li = document.createElement('li');
-              li.textContent = user.username;
-              li.addEventListener('click', function () {
-                addChatUser(user);
-                searchPanel.classList.add('d-none');  // Hide the search panel
-                searchInput.value = '';  // Clear the search input
-              });
-              searchResults.appendChild(li);
-            });
-          } else {
-            searchResults.innerHTML = '<li>No users found</li>';
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching search results:', error);
-        });
-    } else {
-      // Clear search results if query is empty
-      searchResults.innerHTML = '';
-    }
-  });
 
   function addChatUser(user) {
     const chatDiv = document.createElement('div');
     chatDiv.classList.add('friend-drawer', 'friend-drawer--onhover');
     chatDiv.setAttribute('data-chat-partner-id', user.id);
-    document.querySelector('.no-convos-box').classList.add('d-none');
+
+    if (document.querySelector('.no-convos-box')) {
+      document.querySelector('.no-convos-box').classList.add('d-none');
+    }
 
     const img = document.createElement('img');
     img.classList.add('profile-image');
@@ -215,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
     timeSpan.textContent = 'No messages yet';
     chatDiv.appendChild(timeSpan);
 
-    chatDiv.addEventListener('click', () => {
+    chatDiv.addEventListener('click', async () => {
       loadChat(user.id); // Load chat for the selected user
     });
 

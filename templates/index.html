@@ -99,6 +99,14 @@
               alt="Profile img"
             />
             <h5>Username</h5>
+            <i class="material-icons" id="chat-related-info">menu</i>
+            <!-- Chat-related options menu -->
+            <div id="chat-related-options-menu" class="d-none">
+              <ul>
+                <li id="delete-chat">Delete Chat for Both Users</li>
+                <li id="encryption-technique">Encryption Technique Used</li>
+              </ul>
+            </div>
           </div>
 
           <!-- Chat Panel -->
@@ -139,12 +147,13 @@
     </div>
 
     <!-- External JS -->
-    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
     <script>
       const currentUser = {
         id: "{{ current_user.id }}",
         username: "{{ current_user.username }}",
       };
     </script>
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
   </body>
 </html>
