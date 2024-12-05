@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function () {
   const encryptionTechniqueOption = document.getElementById('encryption-technique');
   const socket = io.connect('http://192.168.0.214:8000'); // Connect to the server
 
+  userChats.addEventListener('click', function (event) {
+    const friendDrawer = event.target.closest('.friend-drawer');
+    if (friendDrawer) {
+      friendDrawer.querySelector('.text p').classList.remove('new-message');
+      friendDrawer.querySelector('.time').classList.remove('new-message');
+    }
+  });
+
   // Toggle the chat options menu when clicking the chat-related-info icon
   chatRelatedInfo.addEventListener('click', function () {
     chatOptionsMenu.classList.toggle('d-none');
@@ -138,7 +146,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
       if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id) {
         friendDrawer.querySelector('.text p').textContent = content;
+        friendDrawer.querySelector('.text p').classList.add('new-message');
         friendDrawer.querySelector('.time').textContent = formatTimestamp();
+        friendDrawer.querySelector('.time').classList.add('new-message');
       }
     });
   });
@@ -183,8 +193,8 @@ document.addEventListener('DOMContentLoaded', function () {
       p.textContent = content;  // Latest message content
       time.textContent = formatTimestamp();  // Update timestamp with the formatted value
 
-      // Optionally highlight the conversation to indicate new unread messages
-      chatPartner.classList.add('new-message');  // This class can be used to style the conversation as having a new message
+      p.classList.add('new-message');
+      time.classList.add('new-message');
     } else {
       console.log('Chat partner not found in the conversation list');
     }

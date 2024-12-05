@@ -300,6 +300,10 @@ hr {
   margin: 50%;
 }
 
+.new-message {
+  font-weight: bold;
+}
+
 #chat-related-info {
   color: grey;
   font-size: 25px;
