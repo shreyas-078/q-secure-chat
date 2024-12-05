@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const chatOptionsMenu = document.getElementById('chat-related-options-menu');
   const deleteChatOption = document.getElementById('delete-chat');
   const encryptionTechniqueOption = document.getElementById('encryption-technique');
-  const socket = io.connect('http://127.0.0.1:3000/'); // Connect to the server
+  const socket = io.connect('http://192.168.0.214:8000'); // Connect to the server
 
   // Toggle the chat options menu when clicking the chat-related-info icon
   chatRelatedInfo.addEventListener('click', function () {
@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const query = searchInput.value.trim();
     if (query) {
       // Make an AJAX request to the /search_users route
-      fetch(`/search_users?query=${query}`)
+      const usersToExclude = Array.from(document.querySelectorAll('.friend-drawer')).map(friendDrawer => friendDrawer.dataset.chatPartnerId);
+      fetch(`/search_users?query=${query}&exclude_users=${usersToExclude.join(',')}`)
         .then(response => response.json())
         .then(data => {
           // Clear previous results
@@ -91,10 +92,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
           if (data.status === 'success') {
-            // Notify the other user via WebSocket about the chat deletion
-            const chatPartnerId = document.querySelector('.profile-tray').getAttribute('data-chat-partner-id');
-            socket.emit('chat_deleted', { chatPartnerId });
-
             alert('Chat deleted successfully');
             window.location.reload(); // Reload the page to reflect the changes
           } else {
@@ -109,16 +106,48 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   socket.on('chat_deleted', function (data) {
-    const chatPartnerId = data.chatPartnerId;
-    const chatDiv = document.querySelector(`.friend-drawer[data-chat-partner-id="${chatPartnerId}"]`);
-    if (chatDiv) {
-      chatDiv.remove(); // Remove the deleted chat from the UI
+    console.log('Chat deleted:', data);
+    const chatPartnerId = data.idToRemove;
+
+    // Find the chat for the deleted user
+    const chatToDelete = document.querySelector(`div[data-chat-partner-id='${chatPartnerId}']`);
+
+    // If this was the active chat, show a message saying the chat was deleted
+    const chatPartnerUsername = document.querySelector('.profile-tray h5').textContent;
+    if (chatPartnerUsername === document.querySelector(`div[data-chat-partner-id='${chatPartnerId}'] h6`).textContent) {
+      document.querySelector('#chat-panel').innerHTML = '<p>This chat has been deleted.</p>';
+    }
+
+    if (!chatToDelete) {
+      return;
+    }
+
+    if (chatToDelete && chatToDelete.nextElementSibling && chatToDelete.nextElementSibling.tagName.toLowerCase() === 'hr') {
+      chatToDelete.nextElementSibling.remove(); // Remove the hr element
+      chatToDelete.remove();  // Remove the chat from the chat list
     }
   });
 
   // Handle the encryption technique option
   encryptionTechniqueOption.addEventListener('click', function () {
     alert('Encryption technique: Lattice-based encryption');
+  });
+
+  socket.on('update_message', function (data) {
+    const { sender_id, content } = data;
+    document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
+      if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id) {
+        friendDrawer.querySelector('.text p').textContent = content;
+        friendDrawer.querySelector('.time').textContent = formatTimestamp();
+      }
+    });
+  });
+
+  socket.on('new_chat', function (data) {
+    if (data.id === currentUser.id || data.username === currentUser.username || data.rec_id !== currentUser.id) {
+      return;
+    }
+    addChatUser(data);
   });
 
   socket.on('new_message', function (data) {
@@ -224,6 +253,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Toggle the visibility of the search panel when clicking the search icon
   searchIcon.addEventListener('click', function () {
+    document.getElementById('search-input').value = "";  // Clear the search input
+    document.getElementById('search-results').innerHTML = "";  // Clear the search results
     searchPanel.classList.toggle('d-none');
   });
 

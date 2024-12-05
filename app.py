@@ -34,7 +34,14 @@ cred_collection = db.credentials  # Collection for storing user credentials
 app.secret_key = os.getenv("SECRET_KEY")
 
 # CORS for Sockets
-CORS(app, origins=["http://127.0.0.1:3000", "http://localhost:3000"])
+CORS(
+    app,
+    origins=[
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://192.168.0.214:8000",
+    ],
+)
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -51,7 +58,11 @@ app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 mail = Mail(app)
 socketio = SocketIO(
     app,
-    cors_allowed_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
+    cors_allowed_origins=[
+        "http://127.0.0.1:8000",
+        "http://192.168.0.214:8000",
+        "http://localhost:8000",
+    ],
 )
 
 
@@ -328,7 +339,7 @@ def get_chat(chat_partner_id):
 def search_users():
     query = request.args.get("query")  # Get the search query
     exclude_users = request.args.get(
-        "exclude_users", ""
+        "exclude_users"
     )  # Get the list of users to exclude
     exclude_user_ids = exclude_users.split(",") if exclude_users else []
     exclude_user_ids = [ObjectId(user_id) for user_id in exclude_user_ids]
@@ -403,6 +414,29 @@ def handle_send_message(data):
         "content": content,
         "timestamp": datetime.datetime.now(datetime.timezone.utc),
     }
+
+    # Check if this is the first message between the users
+    existing_message = db.messages.find_one(
+        {
+            "$or": [
+                {"sender_id": current_user.id, "receiver_id": ObjectId(receiver_id)},
+                {"sender_id": ObjectId(receiver_id), "receiver_id": current_user.id},
+            ]
+        }
+    )
+
+    is_first_time_message = existing_message is None
+
+    if is_first_time_message:
+        socketio.emit(
+            "new_chat",
+            {
+                "id": str(current_user.id),
+                "username": current_user.username,
+                "rec_id": receiver_id,
+            },
+        )
+
     db.messages.insert_one(new_message)
 
     message_data = {
@@ -413,6 +447,7 @@ def handle_send_message(data):
         "timestamp": new_message["timestamp"].isoformat(),
     }
     emit("new_message", message_data, room=room_name)
+    socketio.emit("update_message", message_data)
 
 
 @app.route("/delete_chat/<username>", methods=["POST"])
@@ -440,11 +475,14 @@ def delete_chat(username):
                 ]
             }
         )
-
+        socketio.emit(
+            "chat_deleted",
+            {"idToRemove": str(current_user.id)},
+        )
         return jsonify({"status": "success", "message": "Chat deleted successfully."})
 
     return jsonify({"status": "error", "message": "User not found."})
 
 
 if __name__ == "__main__":
-    socketio.run(app, port=3000, debug=True)
+    socketio.run(app, port=8000, debug=True, host="0.0.0.0")
