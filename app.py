@@ -25,7 +25,6 @@ import uuid
 import datetime
 import jwt
 from flask_mail import Mail, Message
-from pqcrypto.kem.mceliece8192128 import generate_keypair, encrypt, decrypt
 
 load_dotenv()
 app = Flask(__name__, static_url_path="/static", static_folder="static")
@@ -33,7 +32,6 @@ client = MongoClient(os.getenv("MONGO_URI"), tlsCAFile=certifi.where())
 db = client["q-secure"]
 cred_collection = db.credentials  # Collection for storing user credentials
 app.secret_key = os.getenv("SECRET_KEY")
-private_key, public_key = generate_keypair()
 
 # CORS for Sockets
 CORS(
