@@ -1,3 +1,4 @@
+# Flask is so GOATED
 from flask import (
     Flask,
     render_template,
@@ -25,6 +26,49 @@ import uuid
 import datetime
 import jwt
 from flask_mail import Mail, Message
+from quantum_safe_encryption import QuantumSafeEncryption
+
+# Initialize the encryption class
+encryption = QuantumSafeEncryption(key_length=256)
+
+# Generate a random key
+key = encryption.generate_key()
+
+KEY_FILE = "encryption_key.txt"
+
+
+def save_key(qkey):
+    print("Dumping the key: ", qkey)
+    with open(KEY_FILE, "w") as f:
+        f.write(qkey)
+
+
+def load_key():
+    if os.path.exists(KEY_FILE):
+        with open(KEY_FILE, "r") as f:
+            return f.readline().strip()
+    return None
+
+
+def reencrypt_messages(old_key, new_key):
+    messages = db.messages.find({})  # Fetch all messages
+
+    for msg in messages:
+        try:
+            # Decrypt with old key
+            decrypted_content = encryption.decrypt(msg["content"], old_key)
+            print(f"Decrypted content: {decrypted_content}")
+
+            # Re-encrypt with new key
+            reencrypted_content = encryption.encrypt(decrypted_content, new_key)
+
+            # Update in database
+            db.messages.update_one(
+                {"_id": msg["_id"]}, {"$set": {"content": reencrypted_content}}
+            )
+        except Exception as e:
+            print(f"Failed to re-encrypt message {msg['_id']}: {e}")
+
 
 load_dotenv()
 app = Flask(__name__, static_url_path="/static", static_folder="static")
@@ -162,10 +206,15 @@ def handle_forgot_password():
         msg.body = f"Please click the link to reset your password: {reset_link}"
         mail.send(msg)
         return jsonify(
-            {"status": "success", "message": "Password reset link sent to your email."}
+            {
+                "status": "success",
+                "message": "Please check you email for instructions to reset your password.",
+            }
         )
     else:
-        return jsonify({"status": "error", "message": "No Accounts use this email."})
+        return jsonify(
+            {"status": "error", "message": "Could not find an account with this email."}
+        )
 
 
 @app.route("/reset_password/<token>", methods=["GET", "POST"])
@@ -187,8 +236,6 @@ def reset_password_page(token):
         return jsonify(
             {"status": "success", "message": "Password has been reset successfully."}
         )
-
-    return render_template("reset_password.html", token=token)
 
 
 @app.route("/signup", methods=["POST"])
@@ -276,7 +323,7 @@ def user(username):
                 {
                     "sender_id": msg["sender_id"],
                     "receiver_id": msg["receiver_id"],
-                    "content": msg["content"],
+                    "content": encryption.decrypt(msg["content"], new_key),
                     "timestamp": msg["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
                 }
             )
@@ -320,7 +367,7 @@ def get_chat(chat_partner_id):
                 "message_id": msg["message_id"],
                 "sender_id": str(msg["sender_id"]),
                 "receiver_id": str(msg["receiver_id"]),
-                "content": msg["content"],
+                "content": encryption.decrypt(msg["content"], new_key),
                 "timestamp": msg["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
             }
         )
@@ -402,6 +449,8 @@ def handle_send_message(data):
     receiver_id = data["receiver_id"]
     content = data["content"]
 
+    encrypted_message = encryption.encrypt(content, new_key)
+
     # Create a unique room name for the chat
     current_user_id = str(current_user.id)
     room_name = (
@@ -413,7 +462,7 @@ def handle_send_message(data):
         "message_id": str(uuid.uuid4()),
         "sender_id": current_user.id,
         "receiver_id": ObjectId(receiver_id),
-        "content": content,
+        "content": encrypted_message,
         "timestamp": datetime.datetime.now(datetime.timezone.utc),
     }
 
@@ -441,11 +490,13 @@ def handle_send_message(data):
 
     db.messages.insert_one(new_message)
 
+    decrypted_message = encryption.decrypt(encrypted_message, new_key)
+
     message_data = {
         "message_id": new_message["message_id"],
         "sender_id": str(current_user.id),  # Convert sender_id to string
         "receiver_id": str(receiver_id),  # Convert receiver_id to string
-        "content": content,
+        "content": decrypted_message,
         "timestamp": new_message["timestamp"].isoformat(),
     }
     emit("new_message", message_data, room=room_name)
@@ -487,4 +538,11 @@ def delete_chat(username):
 
 
 if __name__ == "__main__":
+    old_key = load_key()
+    print("Old Key: ", old_key)
+    new_key = encryption.generate_key()
+    print("New Key: ", new_key)
+    if old_key:
+        reencrypt_messages(old_key, new_key)
+    save_key(new_key)
     socketio.run(app, port=8000, debug=True, host="0.0.0.0")

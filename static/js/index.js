@@ -142,9 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   socket.on('update_message', function (data) {
-    const { sender_id, content } = data;
+    const { sender_id, receiver_id, content } = data;
     document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
-      if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id) {
+      if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id && sender_id !== currentUser.id && receiver_id === currentUser.id) {
         friendDrawer.querySelector('.text p').textContent = content;
         friendDrawer.querySelector('.text p').classList.add('new-message');
         friendDrawer.querySelector('.time').textContent = formatTimestamp();
