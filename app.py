@@ -49,7 +49,7 @@ login_manager.init_app(app)
 login_manager.login_view = "login_page"
 
 # Flask-Mail configuration
-app.config["MAIL_SERVER"] = "smtp.example.com"
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
@@ -155,7 +155,9 @@ def handle_forgot_password():
         )
         reset_link = url_for("reset_password_page", token=token, _external=True)
         msg = Message(
-            "Password Reset Request", sender="", recipients=[email]
+            "Password Reset Request",
+            sender=os.getenv("MAIL_USERNAME"),
+            recipients=[email],
         )  # Add sender later
         msg.body = f"Please click the link to reset your password: {reset_link}"
         mail.send(msg)
