@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
           // Clear previous results
           searchResults.innerHTML = '';
-          console.log(data);
 
           if (data.length > 0) {
             // Display search results
@@ -114,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   socket.on('chat_deleted', function (data) {
-    console.log('Chat deleted:', data);
     const chatPartnerId = data.idToRemove;
 
     // Find the chat for the deleted user
@@ -143,14 +141,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   socket.on('update_message', function (data) {
     const { sender_id, receiver_id, content } = data;
-    document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
-      if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id && sender_id !== currentUser.id && receiver_id === currentUser.id) {
-        friendDrawer.querySelector('.text p').textContent = content;
-        friendDrawer.querySelector('.text p').classList.add('new-message');
-        friendDrawer.querySelector('.time').textContent = formatTimestamp();
-        friendDrawer.querySelector('.time').classList.add('new-message');
-      }
-    });
+    if (sender_id === currentUser.id) {
+      document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
+        if (friendDrawer.getAttribute('data-chat-partner-id') === receiver_id) {
+          friendDrawer.querySelector('.text p').textContent = content;
+          friendDrawer.querySelector('.time').textContent = formatTimestamp();
+          return;
+        };
+      });
+    }
+    else if (receiver_id === currentUser.id) {
+      document.querySelectorAll('.friend-drawer').forEach(friendDrawer => {
+        if (friendDrawer.getAttribute('data-chat-partner-id') === sender_id) {
+          const username = friendDrawer.querySelector('.text h6').textContent;
+          friendDrawer.querySelector('.text p').textContent = content;
+          friendDrawer.querySelector('.time').textContent = formatTimestamp();
+          if (document.querySelector('.profile-tray h5').textContent !== username) {
+            friendDrawer.querySelector('.text p').classList.add('new-message');
+            friendDrawer.querySelector('.time').classList.add('new-message');
+          }
+        }
+      });
+    }
   });
 
   socket.on('new_chat', function (data) {
@@ -192,11 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       p.textContent = content;  // Latest message content
       time.textContent = formatTimestamp();  // Update timestamp with the formatted value
-
-      p.classList.add('new-message');
-      time.classList.add('new-message');
     } else {
-      console.log('Chat partner not found in the conversation list');
+      console.error('Chat partner not found in the conversation list');
     }
 
     const chatPartnerId = chatPartner.getAttribute('data-chat-partner-id');
@@ -280,7 +289,6 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch(`/get_chat/${chatPartnerId}`)
       .then(response => response.json())
       .then(data => {
-        console.log(data);
         if (data.status === 'success') {
           // Update the chat header with the selected user's username
           document.querySelector('.profile-tray').classList.remove('d-none');
@@ -348,7 +356,6 @@ document.addEventListener('DOMContentLoaded', function () {
     chatBoxTray.innerHTML = `
     <div class="col-12">
       <div class="chat-box-tray">
-        <i class="material-icons" id="emoji">sentiment_very_satisfied</i>
         <input type="text" id="new-message" placeholder="Type your message here..." />
         <i class="material-icons" id="send-message">send</i>
       </div>
