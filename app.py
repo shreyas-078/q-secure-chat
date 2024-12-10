@@ -236,6 +236,8 @@ def reset_password_page(token):
         return jsonify(
             {"status": "success", "message": "Password has been reset successfully."}
         )
+    else:
+        return render_template("reset_password.html")
 
 
 @app.route("/signup", methods=["POST"])
